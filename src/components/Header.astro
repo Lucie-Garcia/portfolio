@@ -29,44 +29,48 @@
                     <li>
                         <a
                             class="text-lg hover:scale-105 transform transition duration-300 ease-in-out"
-                            >Mes projets</a
+                            href="/projets">Mes projets</a
                         >
                     </li>
                     <li>
                         <a
                             class="text-lg hover:scale-105 transform transition duration-300 ease-in-out"
-                            >À propos de moi</a
+                            href="/apropos">À propos de moi</a
                         >
                     </li>
                     <li>
                         <a
                             class="text-lg hover:scale-105 transform transition duration-300 ease-in-out"
-                            >competences
+                            href="/competences"
+                            >compétences
                         </a>
                     </li>
                 </ul>
             </div>
-            <a class="btn btn-ghost text-xl lg:hidden">Lucie.G</a>
-            <a class="btn btn-ghost text-xl max-lg:hidden">Lucie Garcia</a>
+            <a class="btn btn-ghost text-xl lg:hidden" href="/">Lucie.G</a>
+            <a class="btn btn-ghost text-xl max-lg:hidden" href="/"
+                >Lucie Garcia</a
+            >
         </div>
         <div class="navbar-center hidden lg:flex">
             <ul class="menu menu-horizontal text-lg px-1">
                 <li>
                     <a
                         class="hover:-translate-y-0.5 hover:scale-105 transform transition duration-300 ease-in-out"
-                        >Mes projets</a
+                        href="/projets">Mes projets</a
                     >
                 </li>
                 <li>
                     <a
                         class="hover:-translate-y-0.5 hover:scale-105 transform transition duration-300 ease-in-out"
-                        >À propos de moi</a
+                        href="/apropos">À propos de moi</a
                     >
                 </li>
                 <li>
                     <a
                         class="hover:-translate-y-0.5 hover:scale-105 transform transition duration-300 ease-in-out"
-                        >competences
+                        href="/competences"
+                        >compétences
                     </a>
                 </li>
             </ul>
@@ -112,16 +116,44 @@
 <script>
     const header = document.querySelector<HTMLElement>(".site-header");
     const hero = document.querySelector<HTMLElement>("#hero");
+    const themeToggle =
+        document.querySelector<HTMLInputElement>("#theme-toggle");
+    const root = document.documentElement;
 
     if (header && hero) {
         const updateHeader = () => {
             header.classList.toggle(
                 "is-over-hero",
-                window.scrollY <= window.innerHeight,
+                window.scrollY <= window.innerHeight / 4,
             );
         };
 
         updateHeader();
         window.addEventListener("scroll", updateHeader, { passive: true });
+    }
+
+    if (themeToggle) {
+        const updateTheme = (theme: "sable-rose" | "sable-rose-dark") => {
+            const dark = theme === "sable-rose-dark";
+            root.dataset.theme = theme;
+            themeToggle.checked = dark;
+            themeToggle.setAttribute(
+                "aria-label",
+                dark ? "Activer le thème clair" : "Activer le thème sombre",
+            );
+        };
+
+        const savedTheme = window.localStorage.getItem("portfolio-theme");
+        updateTheme(
+            savedTheme === "sable-rose-dark" ? savedTheme : "sable-rose",
+        );
+        themeToggle.addEventListener("change", () => {
+            const theme =
+                root.dataset.theme === "sable-rose-dark"
+                    ? "sable-rose"
+                    : "sable-rose-dark";
+            updateTheme(theme);
+            window.localStorage.setItem("portfolio-theme", theme);
+        });
     }
 </script>

@@ -1,0 +1,705 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { db } from "../../lib/db";
+
+type Project = {
+  id: number;
+  slug: string;
+  title: string;
+  summary: string;
+  context: string | null;
+  objective: string | null;
+  result: string | null;
+  learnings: string | null;
+  role: string | null;
+  cover_path: string | null;
+  cover_alt: string | null;
+  started_on: string | null;
+  ended_on: string | null;
+  is_featured: number;
+  is_published: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type Skill = {
+  id: number;
+  slug: string;
+  name: string;
+  category: "langage" | "framework" | "outil" | "design" | "autre";
+  logo_path: string | null;
+  description: string | null;
+  level: number;
+  opinion: string | null;
+  sort_order: number;
+  is_visible: number;
+};
+
+type ProjectImage = {
+  id: number;
+  project_id: number;
+  path: string;
+  alt: string;
+  caption: string | null;
+  sort_order: number;
+};
+
+type ProjectLink = {
+  id: number;
+  project_id: number;
+  kind: "demo" | "code" | "design" | "article" | "autre";
+  label: string;
+  url: string;
+  sort_order: number;
+};
+
+type Tag = { id: number; slug: string; name: string };
+type ProjectTag = { project_id: number; tag_id: number };
+type ProjectSkill = { project_id: number; skill_id: number; usage_note: string | null };
+
+const text = (form: FormData, name: string) => String(form.get(name) ?? "").trim();
+const nullableText = (form: FormData, name: string) => text(form, name) || null;
+const integer = (form: FormData, name: string, fallback = 0) => {
+  const value = Number.parseInt(text(form, name), 10);
+  return Number.isInteger(value) ? value : fallback;
+};
+
+let message = "";
+let error = "";
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const entity = text(form, "entity");
+  const action = text(form, "action");
+
+  try {
+    if (entity === "project") {
+      const values = {
+        slug: text(form, "slug"),
+        title: text(form, "title"),
+        summary: text(form, "summary"),
+        context: nullableText(form, "context"),
+        objective: nullableText(form, "objective"),
+        result: nullableText(form, "result"),
+        learnings: nullableText(form, "learnings"),
+        role: nullableText(form, "role"),
+        cover_path: nullableText(form, "cover_path"),
+        cover_alt: nullableText(form, "cover_alt"),
+        started_on: nullableText(form, "started_on"),
+        ended_on: nullableText(form, "ended_on"),
+        is_featured: integer(form, "is_featured"),
+        is_published: integer(form, "is_published"),
+        sort_order: integer(form, "sort_order"),
+        created_at: text(form, "created_at") || new Date().toISOString(),
+        updated_at: text(form, "updated_at") || new Date().toISOString(),
+      };
+
+      if (!values.slug || !values.title || !values.summary) {
+        throw new Error("Le slug, le titre et le résumé du projet sont obligatoires.");
+      }
+
+      if (action === "create") {
+        db.prepare(
+          `INSERT INTO projects
+            (slug, title, summary, context, objective, result, learnings, role,
+             cover_path, cover_alt, started_on, ended_on, is_featured,
+             is_published, sort_order, created_at, updated_at)
+           VALUES
+            (@slug, @title, @summary, @context, @objective, @result, @learnings, @role,
+             @cover_path, @cover_alt, @started_on, @ended_on, @is_featured,
+             @is_published, @sort_order, @created_at, @updated_at)`,
+        ).run(values);
+        message = "Projet créé.";
+      } else {
+        const id = integer(form, "id");
+        db.prepare(
+          `UPDATE projects SET
+             slug = @slug, title = @title, summary = @summary, context = @context,
+             objective = @objective, result = @result, learnings = @learnings,
+             role = @role, cover_path = @cover_path, cover_alt = @cover_alt,
+             started_on = @started_on, ended_on = @ended_on, is_featured = @is_featured,
+             is_published = @is_published, sort_order = @sort_order,
+             created_at = @created_at, updated_at = @updated_at
+           WHERE id = @id`,
+        ).run({ ...values, id });
+        message = "Projet mis à jour.";
+      }
+    } else if (entity === "project_image" && action === "delete") {
+      db.prepare("DELETE FROM project_images WHERE id = ?").run(integer(form, "id"));
+      message = "Image supprimée.";
+    } else if (entity === "project_link" && action === "delete") {
+      db.prepare("DELETE FROM project_links WHERE id = ?").run(integer(form, "id"));
+      message = "Lien supprimé.";
+    } else if (entity === "tag" && action === "delete") {
+      db.prepare("DELETE FROM tags WHERE id = ?").run(integer(form, "id"));
+      message = "Tag supprimé.";
+    } else if (entity === "project_tag" && action === "delete") {
+      db.prepare("DELETE FROM project_tags WHERE project_id = ? AND tag_id = ?")
+        .run(integer(form, "project_id"), integer(form, "tag_id"));
+      message = "Tag retiré du projet.";
+    } else if (entity === "project_skill" && action === "delete") {
+      db.prepare("DELETE FROM project_skills WHERE project_id = ? AND skill_id = ?")
+        .run(integer(form, "project_id"), integer(form, "skill_id"));
+      message = "Compétence retirée du projet.";
+    } else if (entity === "skill") {
+      const values = {
+        slug: text(form, "slug"),
+        name: text(form, "name"),
+        category: text(form, "category"),
+        logo_path: nullableText(form, "logo_path"),
+        description: nullableText(form, "description"),
+        level: integer(form, "level", 1),
+        opinion: nullableText(form, "opinion"),
+        sort_order: integer(form, "sort_order"),
+        is_visible: integer(form, "is_visible", 1),
+      };
+
+      if (!values.slug || !values.name) {
+        throw new Error("Le slug et le nom de la compétence sont obligatoires.");
+      }
+
+      if (action === "create") {
+        db.prepare(
+          `INSERT INTO skills
+            (slug, name, category, logo_path, description, level, opinion, sort_order, is_visible)
+           VALUES
+            (@slug, @name, @category, @logo_path, @description, @level, @opinion,
+             @sort_order, @is_visible)`,
+        ).run(values);
+        message = "Compétence créée.";
+      } else {
+        const id = integer(form, "id");
+        db.prepare(
+          `UPDATE skills SET
+             slug = @slug, name = @name, category = @category, logo_path = @logo_path,
+             description = @description, level = @level, opinion = @opinion,
+             sort_order = @sort_order, is_visible = @is_visible
+           WHERE id = @id`,
+        ).run({ ...values, id });
+        message = "Compétence mise à jour.";
+      }
+    } else if (entity === "project_image") {
+      const values = {
+        project_id: integer(form, "project_id"),
+        path: text(form, "path"),
+        alt: text(form, "alt"),
+        caption: nullableText(form, "caption"),
+        sort_order: integer(form, "sort_order"),
+      };
+      if (!values.project_id || !values.path || !values.alt) {
+        throw new Error("Le projet, le chemin et le texte alternatif de l'image sont obligatoires.");
+      }
+      if (action === "create") {
+        db.prepare(`INSERT INTO project_images (project_id, path, alt, caption, sort_order)
+          VALUES (@project_id, @path, @alt, @caption, @sort_order)`).run(values);
+        message = "Image ajoutée.";
+      } else {
+        db.prepare(`UPDATE project_images SET project_id = @project_id, path = @path,
+          alt = @alt, caption = @caption, sort_order = @sort_order WHERE id = @id`)
+          .run({ ...values, id: integer(form, "id") });
+        message = "Image mise à jour.";
+      }
+    } else if (entity === "project_link") {
+      const values = {
+        project_id: integer(form, "project_id"),
+        kind: text(form, "kind"),
+        label: text(form, "label"),
+        url: text(form, "url"),
+        sort_order: integer(form, "sort_order"),
+      };
+      if (!values.project_id || !values.label || !values.url) {
+        throw new Error("Le projet, le label et l'URL du lien sont obligatoires.");
+      }
+      if (action === "create") {
+        db.prepare(`INSERT INTO project_links (project_id, kind, label, url, sort_order)
+          VALUES (@project_id, @kind, @label, @url, @sort_order)`).run(values);
+        message = "Lien ajouté.";
+      } else {
+        db.prepare(`UPDATE project_links SET project_id = @project_id, kind = @kind,
+          label = @label, url = @url, sort_order = @sort_order WHERE id = @id`)
+          .run({ ...values, id: integer(form, "id") });
+        message = "Lien mis à jour.";
+      }
+    } else if (entity === "tag") {
+      const values = { slug: text(form, "slug"), name: text(form, "name") };
+      if (!values.slug || !values.name) throw new Error("Le slug et le nom du tag sont obligatoires.");
+      if (action === "create") {
+        db.prepare("INSERT INTO tags (slug, name) VALUES (@slug, @name)").run(values);
+        message = "Tag créé.";
+      } else {
+        db.prepare("UPDATE tags SET slug = @slug, name = @name WHERE id = @id")
+          .run({ ...values, id: integer(form, "id") });
+        message = "Tag mis à jour.";
+      }
+    } else if (entity === "project_tag") {
+      const values = { project_id: integer(form, "project_id"), tag_id: integer(form, "tag_id") };
+      if (!values.project_id || !values.tag_id) throw new Error("Le projet et le tag sont obligatoires.");
+      if (action === "create") {
+        db.prepare("INSERT INTO project_tags (project_id, tag_id) VALUES (@project_id, @tag_id)").run(values);
+        message = "Tag associé au projet.";
+      } else {
+        const oldProjectId = integer(form, "old_project_id");
+        const oldTagId = integer(form, "old_tag_id");
+        const updateAssociation = db.transaction(() => {
+          db.prepare("DELETE FROM project_tags WHERE project_id = ? AND tag_id = ?").run(oldProjectId, oldTagId);
+          db.prepare("INSERT INTO project_tags (project_id, tag_id) VALUES (@project_id, @tag_id)").run(values);
+        });
+        updateAssociation();
+        message = "Association tag mise à jour.";
+      }
+    } else if (entity === "project_skill") {
+      const values = {
+        project_id: integer(form, "project_id"),
+        skill_id: integer(form, "skill_id"),
+        usage_note: nullableText(form, "usage_note"),
+      };
+      if (!values.project_id || !values.skill_id) throw new Error("Le projet et la compétence sont obligatoires.");
+      if (action === "create") {
+        db.prepare(`INSERT INTO project_skills (project_id, skill_id, usage_note)
+          VALUES (@project_id, @skill_id, @usage_note)`).run(values);
+        message = "Compétence associée au projet.";
+      } else {
+        const oldProjectId = integer(form, "old_project_id");
+        const oldSkillId = integer(form, "old_skill_id");
+        const updateAssociation = db.transaction(() => {
+          db.prepare("DELETE FROM project_skills WHERE project_id = ? AND skill_id = ?").run(oldProjectId, oldSkillId);
+          db.prepare(`INSERT INTO project_skills (project_id, skill_id, usage_note)
+            VALUES (@project_id, @skill_id, @usage_note)`).run(values);
+        });
+        updateAssociation();
+        message = "Association compétence mise à jour.";
+      }
+    } else {
+      throw new Error("Type de formulaire inconnu.");
+    }
+  } catch (insertError) {
+    error =
+      insertError instanceof Error && insertError.message.includes("UNIQUE")
+        ? "Un slug ou un nom identique existe déjà."
+        : insertError instanceof Error
+          ? insertError.message
+          : "Impossible d'enregistrer les modifications.";
+  }
+}
+
+const projects = db
+  .prepare(
+    `SELECT id, slug, title, summary, context, objective, result, learnings, role,
+            cover_path, cover_alt, started_on, ended_on, is_featured, is_published,
+            sort_order, created_at, updated_at
+     FROM projects ORDER BY sort_order, title`,
+  )
+  .all() as Project[];
+
+const skills = db
+  .prepare(
+    `SELECT id, slug, name, category, logo_path, description, level, opinion,
+            sort_order, is_visible
+     FROM skills ORDER BY sort_order, name`,
+  )
+  .all() as Skill[];
+
+const projectImages = db.prepare(
+  "SELECT id, project_id, path, alt, caption, sort_order FROM project_images ORDER BY project_id, sort_order, id",
+).all() as ProjectImage[];
+const projectLinks = db.prepare(
+  "SELECT id, project_id, kind, label, url, sort_order FROM project_links ORDER BY project_id, sort_order, id",
+).all() as ProjectLink[];
+const tags = db.prepare("SELECT id, slug, name FROM tags ORDER BY name").all() as Tag[];
+const projectTags = db.prepare("SELECT project_id, tag_id FROM project_tags ORDER BY project_id, tag_id").all() as ProjectTag[];
+const projectSkills = db.prepare(
+  "SELECT project_id, skill_id, usage_note FROM project_skills ORDER BY project_id, skill_id",
+).all() as ProjectSkill[];
+
+const inputClass = "input input-bordered w-full";
+const textAreaClass = "textarea textarea-bordered min-h-24 w-full";
+---
+
+<Layout>
+  <main class="mx-auto max-w-7xl px-6 py-32">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Gestion du contenu</p>
+        <h1 class="mt-2 text-4xl font-bold">Administration</h1>
+      </div>
+      <form method="post" action="/admin/logout">
+        <button class="btn btn-outline btn-sm" type="submit">Se déconnecter</button>
+      </form>
+    </div>
+
+    {message && <p class="alert alert-success mt-8">{message}</p>}
+    {error && <p class="alert alert-error mt-8">{error}</p>}
+
+    <section class="mt-12">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <h2 class="text-3xl font-semibold">Projets</h2>
+          <p class="mt-2 opacity-70">Chaque colonne de la table est disponible ci-dessous.</p>
+        </div>
+        <span class="badge badge-outline">{projects.length} projet{projects.length > 1 ? "s" : ""}</span>
+      </div>
+
+      <div class="mt-6 grid gap-6">
+        {projects.map((project) => (
+          <details class="group rounded-box border border-base-300 bg-base-200 shadow-sm">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden">
+              <span class="min-w-0">
+                <span class="block truncate text-lg font-semibold">{project.title || "Projet sans titre"}</span>
+                <span class="mt-1 block text-sm opacity-50">#{project.id} · {project.slug}</span>
+              </span>
+              <span class="flex shrink-0 items-center gap-2">
+                <span class={`badge ${project.is_published ? "badge-success" : "badge-ghost"}`}>
+                  {project.is_published ? "Publié" : "Non publié"}
+                </span>
+                <span class="text-xl opacity-50 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+              </span>
+            </summary>
+            <form method="post" class="border-t border-base-300 p-5">
+              <input type="hidden" name="entity" value="project" />
+              <input type="hidden" name="action" value="update" />
+              <input type="hidden" name="id" value={project.id} />
+              <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-xl font-semibold">Modifier le projet <span class="text-sm opacity-50">#{project.id}</span></h3>
+                <button class="btn btn-primary btn-sm" type="submit">Enregistrer le projet</button>
+              </div>
+              <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <label class="form-control"><span class="label-text">slug *</span><input class={inputClass} name="slug" value={project.slug} required /></label>
+              <label class="form-control"><span class="label-text">title *</span><input class={inputClass} name="title" value={project.title} required /></label>
+              <label class="form-control lg:col-span-3"><span class="label-text">summary *</span><textarea class={textAreaClass} name="summary" required>{project.summary}</textarea></label>
+              <label class="form-control lg:col-span-3"><span class="label-text">context</span><textarea class={textAreaClass} name="context">{project.context}</textarea></label>
+              <label class="form-control lg:col-span-3"><span class="label-text">objective</span><textarea class={textAreaClass} name="objective">{project.objective}</textarea></label>
+              <label class="form-control lg:col-span-3"><span class="label-text">result</span><textarea class={textAreaClass} name="result">{project.result}</textarea></label>
+              <label class="form-control lg:col-span-3"><span class="label-text">learnings</span><textarea class={textAreaClass} name="learnings">{project.learnings}</textarea></label>
+              <label class="form-control"><span class="label-text">role</span><input class={inputClass} name="role" value={project.role ?? ""} /></label>
+              <label class="form-control"><span class="label-text">cover_path</span><input class={inputClass} name="cover_path" value={project.cover_path ?? ""} /></label>
+              <label class="form-control"><span class="label-text">cover_alt</span><input class={inputClass} name="cover_alt" value={project.cover_alt ?? ""} /></label>
+              <label class="form-control"><span class="label-text">started_on</span><input class={inputClass} type="date" name="started_on" value={project.started_on ?? ""} /></label>
+              <label class="form-control"><span class="label-text">ended_on</span><input class={inputClass} type="date" name="ended_on" value={project.ended_on ?? ""} /></label>
+              <label class="form-control"><span class="label-text">is_featured</span><select class={inputClass} name="is_featured"><option value="0" selected={project.is_featured === 0}>Non</option><option value="1" selected={project.is_featured === 1}>Oui</option></select></label>
+              <label class="form-control"><span class="label-text">is_published</span><select class={inputClass} name="is_published"><option value="0" selected={project.is_published === 0}>Non</option><option value="1" selected={project.is_published === 1}>Oui</option></select></label>
+              <label class="form-control"><span class="label-text">sort_order</span><input class={inputClass} type="number" name="sort_order" value={project.sort_order} /></label>
+              <label class="form-control"><span class="label-text">created_at</span><input class={inputClass} name="created_at" value={project.created_at} /></label>
+              <label class="form-control"><span class="label-text">updated_at</span><input class={inputClass} name="updated_at" value={project.updated_at} /></label>
+              <label class="form-control"><span class="label-text">id (géré par la base)</span><input class={inputClass} value={project.id} readonly /></label>
+              </div>
+            </form>
+            <div class="grid gap-4 border-t border-base-300 p-5 lg:grid-cols-2">
+              <details class="rounded-box border border-base-300 bg-base-100 p-4">
+                <summary class="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+                  <span>Images ({projectImages.filter((image) => image.project_id === project.id).length})</span>
+                  <span aria-hidden="true">⌄</span>
+                </summary>
+                <div class="mt-4 grid gap-3">
+                  {projectImages.filter((image) => image.project_id === project.id).map((image) => (
+                    <div class="rounded-box border border-base-300 p-3">
+                      <form method="post" class="grid gap-3">
+                        <input type="hidden" name="entity" value="project_image" /><input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={image.id} /><input type="hidden" name="project_id" value={project.id} />
+                        <input class={inputClass} name="path" value={image.path} placeholder="path" required />
+                        <input class={inputClass} name="alt" value={image.alt} placeholder="alt" required />
+                        <input class={inputClass} name="caption" value={image.caption ?? ""} placeholder="caption" />
+                        <div class="flex gap-3"><input class={inputClass} type="number" name="sort_order" value={image.sort_order} placeholder="ordre" /><button class="btn btn-primary btn-sm" type="submit">Modifier</button></div>
+                      </form>
+                      <form method="post" class="mt-2"><input type="hidden" name="entity" value="project_image" /><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={image.id} /><button class="btn btn-error btn-outline btn-xs" type="submit">Supprimer</button></form>
+                    </div>
+                  ))}
+                  <form method="post" class="border-t border-base-300 pt-3">
+                    <input type="hidden" name="entity" value="project_image" /><input type="hidden" name="action" value="create" /><input type="hidden" name="project_id" value={project.id} />
+                    <div class="grid gap-2"><input class={inputClass} name="path" placeholder="Nouveau path *" required /><input class={inputClass} name="alt" placeholder="Texte alternatif *" required /><input class={inputClass} name="caption" placeholder="Caption" /><input class={inputClass} type="number" name="sort_order" value="0" /><button class="btn btn-outline btn-sm" type="submit">Ajouter une image</button></div>
+                  </form>
+                </div>
+              </details>
+
+              <details class="rounded-box border border-base-300 bg-base-100 p-4">
+                <summary class="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+                  <span>Liens ({projectLinks.filter((link) => link.project_id === project.id).length})</span><span aria-hidden="true">⌄</span>
+                </summary>
+                <div class="mt-4 grid gap-3">
+                  {projectLinks.filter((link) => link.project_id === project.id).map((link) => (
+                    <div class="rounded-box border border-base-300 p-3">
+                      <form method="post" class="grid gap-2">
+                        <input type="hidden" name="entity" value="project_link" /><input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={link.id} /><input type="hidden" name="project_id" value={project.id} />
+                        <select class={inputClass} name="kind">{(["demo", "code", "design", "article", "autre"] as const).map((kind) => <option value={kind} selected={kind === link.kind}>{kind}</option>)}</select><input class={inputClass} name="label" value={link.label} placeholder="Label" required /><input class={inputClass} name="url" value={link.url} placeholder="URL" required /><input class={inputClass} type="number" name="sort_order" value={link.sort_order} /><button class="btn btn-primary btn-sm" type="submit">Modifier</button>
+                      </form>
+                      <form method="post" class="mt-2"><input type="hidden" name="entity" value="project_link" /><input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={link.id} /><button class="btn btn-error btn-outline btn-xs" type="submit">Supprimer</button></form>
+                    </div>
+                  ))}
+                  <form method="post" class="border-t border-base-300 pt-3"><input type="hidden" name="entity" value="project_link" /><input type="hidden" name="action" value="create" /><input type="hidden" name="project_id" value={project.id} /><div class="grid gap-2"><select class={inputClass} name="kind"><option value="demo">demo</option><option value="code">code</option><option value="design">design</option><option value="article">article</option><option value="autre">autre</option></select><input class={inputClass} name="label" placeholder="Label *" required /><input class={inputClass} name="url" placeholder="URL *" required /><input class={inputClass} type="number" name="sort_order" value="0" /><button class="btn btn-outline btn-sm" type="submit">Ajouter un lien</button></div></form>
+                </div>
+              </details>
+
+              <details class="rounded-box border border-base-300 bg-base-100 p-4">
+                <summary class="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+                  <span>Tags ({projectTags.filter((tag) => tag.project_id === project.id).length})</span><span aria-hidden="true">⌄</span>
+                </summary>
+                <div class="mt-4 grid gap-3">
+                  {projectTags.filter((tag) => tag.project_id === project.id).map((association) => (
+                    <div class="flex items-center gap-2 rounded-box border border-base-300 p-3">
+                      <form method="post" class="flex min-w-0 flex-1 gap-2"><input type="hidden" name="entity" value="project_tag" /><input type="hidden" name="action" value="update" /><input type="hidden" name="old_project_id" value={project.id} /><input type="hidden" name="old_tag_id" value={association.tag_id} /><input type="hidden" name="project_id" value={project.id} /><select class={inputClass} name="tag_id">{tags.map((tag) => <option value={tag.id} selected={tag.id === association.tag_id}>{tag.name}</option>)}</select><button class="btn btn-primary btn-sm" type="submit">Modifier</button></form>
+                      <form method="post"><input type="hidden" name="entity" value="project_tag" /><input type="hidden" name="action" value="delete" /><input type="hidden" name="project_id" value={project.id} /><input type="hidden" name="tag_id" value={association.tag_id} /><button class="btn btn-error btn-outline btn-xs" type="submit">Retirer</button></form>
+                    </div>
+                  ))}
+                  <form method="post" class="border-t border-base-300 pt-3"><input type="hidden" name="entity" value="project_tag" /><input type="hidden" name="action" value="create" /><input type="hidden" name="project_id" value={project.id} /><div class="flex gap-2"><select class={inputClass} name="tag_id" required><option value="">Choisir un tag</option>{tags.map((tag) => <option value={tag.id}>{tag.name}</option>)}</select><button class="btn btn-outline btn-sm" type="submit">Ajouter</button></div></form>
+                </div>
+              </details>
+
+              <details class="rounded-box border border-base-300 bg-base-100 p-4">
+                <summary class="flex cursor-pointer list-none items-center justify-between font-semibold [&::-webkit-details-marker]:hidden">
+                  <span>Compétences ({projectSkills.filter((skill) => skill.project_id === project.id).length})</span><span aria-hidden="true">⌄</span>
+                </summary>
+                <div class="mt-4 grid gap-3">
+                  {projectSkills.filter((skill) => skill.project_id === project.id).map((association) => (
+                    <div class="rounded-box border border-base-300 p-3">
+                      <form method="post" class="grid gap-2"><input type="hidden" name="entity" value="project_skill" /><input type="hidden" name="action" value="update" /><input type="hidden" name="old_project_id" value={project.id} /><input type="hidden" name="old_skill_id" value={association.skill_id} /><input type="hidden" name="project_id" value={project.id} /><select class={inputClass} name="skill_id">{skills.map((skill) => <option value={skill.id} selected={skill.id === association.skill_id}>{skill.name}</option>)}</select><textarea class={textAreaClass} name="usage_note" placeholder="Note d'utilisation">{association.usage_note}</textarea><button class="btn btn-primary btn-sm justify-self-start" type="submit">Modifier</button></form>
+                      <form method="post" class="mt-2"><input type="hidden" name="entity" value="project_skill" /><input type="hidden" name="action" value="delete" /><input type="hidden" name="project_id" value={project.id} /><input type="hidden" name="skill_id" value={association.skill_id} /><button class="btn btn-error btn-outline btn-xs" type="submit">Retirer</button></form>
+                    </div>
+                  ))}
+                  <form method="post" class="border-t border-base-300 pt-3"><input type="hidden" name="entity" value="project_skill" /><input type="hidden" name="action" value="create" /><input type="hidden" name="project_id" value={project.id} /><div class="grid gap-2"><select class={inputClass} name="skill_id" required><option value="">Choisir une compétence</option>{skills.map((skill) => <option value={skill.id}>{skill.name}</option>)}</select><textarea class={textAreaClass} name="usage_note" placeholder="Note d'utilisation"></textarea><button class="btn btn-outline btn-sm" type="submit">Ajouter</button></div></form>
+                </div>
+              </details>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-16 hidden" aria-hidden="true">
+      <div>
+        <h2 class="text-3xl font-semibold">Données liées aux projets</h2>
+        <p class="mt-2 opacity-70">
+          Images, liens, tags et compétences associés à chaque projet.
+        </p>
+      </div>
+
+      <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        <div class="rounded-box border border-base-300 bg-base-200 p-5">
+          <h3 class="text-xl font-semibold">Images ({projectImages.length})</h3>
+          <div class="mt-4 grid gap-3">
+            {projectImages.map((image) => (
+              <form method="post" class="rounded-box border border-base-300 bg-base-100 p-4">
+                <input type="hidden" name="entity" value="project_image" />
+                <input type="hidden" name="action" value="update" />
+                <input type="hidden" name="id" value={image.id} />
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="form-control"><span class="label-text">projet</span><select class={inputClass} name="project_id">{projects.map((project) => <option value={project.id} selected={project.id === image.project_id}>{project.title}</option>)}</select></label>
+                  <label class="form-control"><span class="label-text">sort_order</span><input class={inputClass} type="number" name="sort_order" value={image.sort_order} /></label>
+                  <label class="form-control sm:col-span-2"><span class="label-text">path *</span><input class={inputClass} name="path" value={image.path} required /></label>
+                  <label class="form-control sm:col-span-2"><span class="label-text">alt *</span><input class={inputClass} name="alt" value={image.alt} required /></label>
+                  <label class="form-control sm:col-span-2"><span class="label-text">caption</span><input class={inputClass} name="caption" value={image.caption ?? ""} /></label>
+                </div>
+                <button class="btn btn-primary btn-sm mt-3" type="submit">Enregistrer</button>
+              </form>
+            ))}
+          </div>
+          <form method="post" class="mt-4 border-t border-base-300 pt-4">
+            <input type="hidden" name="entity" value="project_image" /><input type="hidden" name="action" value="create" />
+            <h4 class="font-semibold">Ajouter une image</h4>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <select class={inputClass} name="project_id" required><option value="">Projet</option>{projects.map((project) => <option value={project.id}>{project.title}</option>)}</select>
+              <input class={inputClass} type="number" name="sort_order" value="0" placeholder="sort_order" />
+              <input class={`${inputClass} sm:col-span-2`} name="path" placeholder="path *" required />
+              <input class={`${inputClass} sm:col-span-2`} name="alt" placeholder="alt *" required />
+              <input class={`${inputClass} sm:col-span-2`} name="caption" placeholder="caption" />
+            </div>
+            <button class="btn btn-outline btn-sm mt-3" type="submit">Ajouter l'image</button>
+          </form>
+        </div>
+
+        <div class="rounded-box border border-base-300 bg-base-200 p-5">
+          <h3 class="text-xl font-semibold">Liens ({projectLinks.length})</h3>
+          <div class="mt-4 grid gap-3">
+            {projectLinks.map((link) => (
+              <form method="post" class="rounded-box border border-base-300 bg-base-100 p-4">
+                <input type="hidden" name="entity" value="project_link" /><input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={link.id} />
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="form-control"><span class="label-text">projet</span><select class={inputClass} name="project_id">{projects.map((project) => <option value={project.id} selected={project.id === link.project_id}>{project.title}</option>)}</select></label>
+                  <label class="form-control"><span class="label-text">kind</span><select class={inputClass} name="kind">{(["demo", "code", "design", "article", "autre"] as const).map((kind) => <option value={kind} selected={kind === link.kind}>{kind}</option>)}</select></label>
+                  <label class="form-control"><span class="label-text">label *</span><input class={inputClass} name="label" value={link.label} required /></label>
+                  <label class="form-control"><span class="label-text">sort_order</span><input class={inputClass} type="number" name="sort_order" value={link.sort_order} /></label>
+                  <label class="form-control sm:col-span-2"><span class="label-text">url *</span><input class={inputClass} name="url" value={link.url} required /></label>
+                </div>
+                <button class="btn btn-primary btn-sm mt-3" type="submit">Enregistrer</button>
+              </form>
+            ))}
+          </div>
+          <form method="post" class="mt-4 border-t border-base-300 pt-4">
+            <input type="hidden" name="entity" value="project_link" /><input type="hidden" name="action" value="create" />
+            <h4 class="font-semibold">Ajouter un lien</h4>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <select class={inputClass} name="project_id" required><option value="">Projet</option>{projects.map((project) => <option value={project.id}>{project.title}</option>)}</select>
+              <select class={inputClass} name="kind"><option value="demo">demo</option><option value="code">code</option><option value="design">design</option><option value="article">article</option><option value="autre">autre</option></select>
+              <input class={inputClass} name="label" placeholder="label *" required />
+              <input class={inputClass} type="number" name="sort_order" value="0" placeholder="sort_order" />
+              <input class={`${inputClass} sm:col-span-2`} name="url" placeholder="url *" required />
+            </div>
+            <button class="btn btn-outline btn-sm mt-3" type="submit">Ajouter le lien</button>
+          </form>
+        </div>
+
+        <div class="rounded-box border border-base-300 bg-base-200 p-5">
+          <h3 class="text-xl font-semibold">Tags ({tags.length})</h3>
+          <div class="mt-4 grid gap-3">
+            {tags.map((tag) => (
+              <form method="post" class="flex flex-wrap items-end gap-3 rounded-box border border-base-300 bg-base-100 p-4">
+                <input type="hidden" name="entity" value="tag" /><input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={tag.id} />
+                <label class="form-control min-w-32 flex-1"><span class="label-text">slug *</span><input class={inputClass} name="slug" value={tag.slug} required /></label>
+                <label class="form-control min-w-32 flex-1"><span class="label-text">name *</span><input class={inputClass} name="name" value={tag.name} required /></label>
+                <button class="btn btn-primary btn-sm" type="submit">Enregistrer</button>
+              </form>
+            ))}
+          </div>
+          <form method="post" class="mt-4 border-t border-base-300 pt-4">
+            <input type="hidden" name="entity" value="tag" /><input type="hidden" name="action" value="create" />
+            <h4 class="font-semibold">Ajouter un tag</h4>
+            <div class="mt-3 flex flex-wrap gap-3"><input class={inputClass} name="slug" placeholder="slug *" required /><input class={inputClass} name="name" placeholder="name *" required /></div>
+            <button class="btn btn-outline btn-sm mt-3" type="submit">Ajouter le tag</button>
+          </form>
+        </div>
+
+        <div class="rounded-box border border-base-300 bg-base-200 p-5">
+          <h3 class="text-xl font-semibold">Tags des projets ({projectTags.length})</h3>
+          <div class="mt-4 grid gap-3">
+            {projectTags.map((association) => (
+              <form method="post" class="rounded-box border border-base-300 bg-base-100 p-4">
+                <input type="hidden" name="entity" value="project_tag" /><input type="hidden" name="action" value="update" />
+                <input type="hidden" name="old_project_id" value={association.project_id} /><input type="hidden" name="old_tag_id" value={association.tag_id} />
+                <div class="flex flex-wrap items-end gap-3">
+                  <label class="form-control min-w-40 flex-1"><span class="label-text">projet</span><select class={inputClass} name="project_id">{projects.map((project) => <option value={project.id} selected={project.id === association.project_id}>{project.title}</option>)}</select></label>
+                  <label class="form-control min-w-32 flex-1"><span class="label-text">tag</span><select class={inputClass} name="tag_id">{tags.map((tag) => <option value={tag.id} selected={tag.id === association.tag_id}>{tag.name}</option>)}</select></label>
+                  <button class="btn btn-primary btn-sm" type="submit">Enregistrer</button>
+                </div>
+              </form>
+            ))}
+          </div>
+          <form method="post" class="mt-4 border-t border-base-300 pt-4">
+            <input type="hidden" name="entity" value="project_tag" /><input type="hidden" name="action" value="create" />
+            <h4 class="font-semibold">Associer un tag</h4>
+            <div class="mt-3 flex flex-wrap gap-3"><select class={inputClass} name="project_id" required><option value="">Projet</option>{projects.map((project) => <option value={project.id}>{project.title}</option>)}</select><select class={inputClass} name="tag_id" required><option value="">Tag</option>{tags.map((tag) => <option value={tag.id}>{tag.name}</option>)}</select></div>
+            <button class="btn btn-outline btn-sm mt-3" type="submit">Associer</button>
+          </form>
+        </div>
+
+        <div class="rounded-box border border-base-300 bg-base-200 p-5 lg:col-span-2">
+          <h3 class="text-xl font-semibold">Compétences des projets ({projectSkills.length})</h3>
+          <div class="mt-4 grid gap-3 md:grid-cols-2">
+            {projectSkills.map((association) => (
+              <form method="post" class="rounded-box border border-base-300 bg-base-100 p-4">
+                <input type="hidden" name="entity" value="project_skill" /><input type="hidden" name="action" value="update" />
+                <input type="hidden" name="old_project_id" value={association.project_id} /><input type="hidden" name="old_skill_id" value={association.skill_id} />
+                <div class="grid gap-3">
+                  <select class={inputClass} name="project_id">{projects.map((project) => <option value={project.id} selected={project.id === association.project_id}>{project.title}</option>)}</select>
+                  <select class={inputClass} name="skill_id">{skills.map((skill) => <option value={skill.id} selected={skill.id === association.skill_id}>{skill.name}</option>)}</select>
+                  <textarea class={textAreaClass} name="usage_note" placeholder="usage_note">{association.usage_note}</textarea>
+                  <button class="btn btn-primary btn-sm justify-self-start" type="submit">Enregistrer</button>
+                </div>
+              </form>
+            ))}
+          </div>
+          <form method="post" class="mt-4 border-t border-base-300 pt-4">
+            <input type="hidden" name="entity" value="project_skill" /><input type="hidden" name="action" value="create" />
+            <h4 class="font-semibold">Associer une compétence</h4>
+            <div class="mt-3 grid gap-3 md:grid-cols-3"><select class={inputClass} name="project_id" required><option value="">Projet</option>{projects.map((project) => <option value={project.id}>{project.title}</option>)}</select><select class={inputClass} name="skill_id" required><option value="">Compétence</option>{skills.map((skill) => <option value={skill.id}>{skill.name}</option>)}</select><textarea class={textAreaClass} name="usage_note" placeholder="usage_note"></textarea></div>
+            <button class="btn btn-outline btn-sm mt-3" type="submit">Associer</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-16">
+      <div class="flex items-end justify-between gap-4">
+        <div>
+          <h2 class="text-3xl font-semibold">Compétences</h2>
+          <p class="mt-2 opacity-70">Les champs de la table <code>skills</code> sont éditables.</p>
+        </div>
+        <span class="badge badge-outline">{skills.length} compétence{skills.length > 1 ? "s" : ""}</span>
+      </div>
+
+      <div class="mt-6 grid gap-6">
+        {skills.map((skill) => (
+          <details class="group rounded-box border border-base-300 bg-base-200 shadow-sm">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden">
+              <span class="min-w-0">
+                <span class="block truncate text-lg font-semibold">{skill.name}</span>
+                <span class="mt-1 block text-sm opacity-50">#{skill.id} · {skill.category}</span>
+              </span>
+              <span class="flex shrink-0 items-center gap-2">
+                <span class={`badge ${skill.is_visible ? "badge-success" : "badge-ghost"}`}>
+                  {skill.is_visible ? "Visible" : "Masquée"}
+                </span>
+                <span class="text-xl opacity-50 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+              </span>
+            </summary>
+            <form method="post" class="border-t border-base-300 p-5">
+              <input type="hidden" name="entity" value="skill" />
+              <input type="hidden" name="action" value="update" />
+              <input type="hidden" name="id" value={skill.id} />
+              <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-xl font-semibold">Modifier la compétence <span class="text-sm opacity-50">#{skill.id}</span></h3>
+                <button class="btn btn-primary btn-sm" type="submit">Enregistrer la compétence</button>
+              </div>
+              <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <label class="form-control"><span class="label-text">slug *</span><input class={inputClass} name="slug" value={skill.slug} required /></label>
+              <label class="form-control"><span class="label-text">name *</span><input class={inputClass} name="name" value={skill.name} required /></label>
+              <label class="form-control"><span class="label-text">category *</span><select class={inputClass} name="category">{(["langage", "framework", "outil", "design", "autre"] as const).map((category) => <option value={category} selected={skill.category === category}>{category}</option>)}</select></label>
+              <label class="form-control"><span class="label-text">logo_path</span><input class={inputClass} name="logo_path" value={skill.logo_path ?? ""} /></label>
+              <label class="form-control md:col-span-2"><span class="label-text">description</span><textarea class={textAreaClass} name="description">{skill.description}</textarea></label>
+              <label class="form-control"><span class="label-text">level (1 à 5)</span><input class={inputClass} type="number" min="1" max="5" name="level" value={skill.level} required /></label>
+              <label class="form-control md:col-span-2"><span class="label-text">opinion</span><textarea class={textAreaClass} name="opinion">{skill.opinion}</textarea></label>
+              <label class="form-control"><span class="label-text">sort_order</span><input class={inputClass} type="number" name="sort_order" value={skill.sort_order} /></label>
+              <label class="form-control"><span class="label-text">is_visible</span><select class={inputClass} name="is_visible"><option value="0" selected={skill.is_visible === 0}>Non</option><option value="1" selected={skill.is_visible === 1}>Oui</option></select></label>
+              <label class="form-control"><span class="label-text">id (géré par la base)</span><input class={inputClass} value={skill.id} readonly /></label>
+              </div>
+            </form>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-16 grid gap-6 lg:grid-cols-2">
+      <form method="post" class="rounded-box border border-primary/30 bg-base-200 p-6 shadow-sm">
+        <input type="hidden" name="entity" value="project" />
+        <input type="hidden" name="action" value="create" />
+        <h2 class="text-2xl font-semibold">Nouveau projet</h2>
+        <p class="mt-2 text-sm opacity-70">Tous les champs de <code>projects</code> sont paramétrables.</p>
+        <div class="mt-5 grid gap-4">
+          <label class="form-control"><span class="label-text">slug *</span><input class={inputClass} name="slug" required /></label>
+          <label class="form-control"><span class="label-text">title *</span><input class={inputClass} name="title" required /></label>
+          <label class="form-control"><span class="label-text">summary *</span><textarea class={textAreaClass} name="summary" required></textarea></label>
+          {(["context", "objective", "result", "learnings"] as const).map((field) => <label class="form-control"><span class="label-text">{field}</span><textarea class={textAreaClass} name={field}></textarea></label>)}
+          <label class="form-control"><span class="label-text">role</span><input class={inputClass} name="role" /></label>
+          <label class="form-control"><span class="label-text">cover_path</span><input class={inputClass} name="cover_path" /></label>
+          <label class="form-control"><span class="label-text">cover_alt</span><input class={inputClass} name="cover_alt" /></label>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="form-control"><span class="label-text">started_on</span><input class={inputClass} type="date" name="started_on" /></label>
+            <label class="form-control"><span class="label-text">ended_on</span><input class={inputClass} type="date" name="ended_on" /></label>
+            <label class="form-control"><span class="label-text">is_featured</span><select class={inputClass} name="is_featured"><option value="0">Non</option><option value="1">Oui</option></select></label>
+            <label class="form-control"><span class="label-text">is_published</span><select class={inputClass} name="is_published" value="1"><option value="0">Non</option><option value="1" selected>Oui</option></select></label>
+            <label class="form-control"><span class="label-text">sort_order</span><input class={inputClass} type="number" name="sort_order" value="0" /></label>
+            <label class="form-control"><span class="label-text">created_at</span><input class={inputClass} name="created_at" placeholder="automatique si vide" /></label>
+            <label class="form-control"><span class="label-text">updated_at</span><input class={inputClass} name="updated_at" placeholder="automatique si vide" /></label>
+          </div>
+          <button class="btn btn-primary justify-self-start" type="submit">Créer le projet</button>
+        </div>
+      </form>
+
+      <form method="post" class="rounded-box border border-primary/30 bg-base-200 p-6 shadow-sm">
+        <input type="hidden" name="entity" value="skill" />
+        <input type="hidden" name="action" value="create" />
+        <h2 class="text-2xl font-semibold">Nouvelle compétence</h2>
+        <p class="mt-2 text-sm opacity-70">Tous les champs de <code>skills</code> sont paramétrables.</p>
+        <div class="mt-5 grid gap-4">
+          <label class="form-control"><span class="label-text">slug *</span><input class={inputClass} name="slug" required /></label>
+          <label class="form-control"><span class="label-text">name *</span><input class={inputClass} name="name" required /></label>
+          <label class="form-control"><span class="label-text">category *</span><select class={inputClass} name="category">{(["langage", "framework", "outil", "design", "autre"] as const).map((category) => <option value={category}>{category}</option>)}</select></label>
+          <label class="form-control"><span class="label-text">logo_path</span><input class={inputClass} name="logo_path" /></label>
+          <label class="form-control"><span class="label-text">description</span><textarea class={textAreaClass} name="description"></textarea></label>
+          <label class="form-control"><span class="label-text">level (1 à 5)</span><input class={inputClass} type="number" min="1" max="5" name="level" value="1" required /></label>
+          <label class="form-control"><span class="label-text">opinion</span><textarea class={textAreaClass} name="opinion"></textarea></label>
+          <label class="form-control"><span class="label-text">sort_order</span><input class={inputClass} type="number" name="sort_order" value="0" /></label>
+          <label class="form-control"><span class="label-text">is_visible</span><select class={inputClass} name="is_visible"><option value="0">Non</option><option value="1" selected>Oui</option></select></label>
+          <button class="btn btn-primary justify-self-start" type="submit">Créer la compétence</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</Layout>

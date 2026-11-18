@@ -261,7 +261,31 @@ html:has(.hero-page) {
     opacity: 1;
 }
 
-#waves {
+.cursor-glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    width: 520px;
+    height: 520px;
+    margin: -260px 0 0 -260px;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(30px);
+    opacity: 0;
+    background: radial-gradient(circle, var(--glow-color) 0%, transparent 65%);
+    transition: opacity 0.4s;
+}
+
+.cursor-glow.is-visible {
+    opacity: 1;
+}
+
+body:has(#hero) .cursor-glow {
+    display: none;
+}
+
+.animated-waves {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -269,7 +293,57 @@ html:has(.hero-page) {
     pointer-events: none;
 }
 
-#hero> :not(#waves):not(#glow) {
+.skills-page-waves {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+.skill-summary {
+    transition: border-color .3s ease, box-shadow .3s ease, background-color .3s ease;
+}
+
+.skill-summary:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 1.25rem rgba(216, 167, 160, .42), 0 0 3rem rgba(216, 167, 160, .2);
+}
+
+.project-card {
+    transition: border-color .3s ease, box-shadow .3s ease, background-color .3s ease, transform .3s ease;
+}
+
+.project-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 1.25rem rgba(216, 167, 160, .42), 0 0 3rem rgba(216, 167, 160, .2);
+}
+
+.skill-details {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .35s ease, opacity .25s ease;
+}
+
+.skill-summary[open] .skill-details {
+    max-height: var(--skill-details-height, 600px);
+    opacity: 1;
+}
+
+.skill-summary.is-closing[open] .skill-details {
+    max-height: 0;
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skill-details,
+    .skill-summary {
+        transition: none;
+    }
+}
+
+#hero> :not(.animated-waves):not(#glow) {
     position: relative;
     z-index: 1;
 }
@@ -319,11 +393,28 @@ html:has(.hero-page) {
 }
 
 .site-header {
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    background-color: color-mix(in srgb, var(--color-base-100) 42%, transparent) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-base-content) 10%, transparent);
+    box-shadow: 0 4px 24px color-mix(in srgb, var(--color-base-content) 6%, transparent);
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    transition:
+        background-color 0.45s ease,
+        border-color 0.45s ease,
+        box-shadow 0.45s ease,
+        backdrop-filter 0.45s ease;
+}
+
+.site-header .navbar {
+    background-color: transparent !important;
+    box-shadow: none;
 }
 
 .site-header.is-over-hero,
 .site-header.is-over-hero .navbar {
-    background-color: transparent;
+    background-color: transparent !important;
     box-shadow: none;
+    border-bottom-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }

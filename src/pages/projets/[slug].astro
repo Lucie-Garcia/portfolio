@@ -1,0 +1,261 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import BrowserPreview from "../../components/BrowserPreview.astro";
+import { getProject } from "../../lib/queries";
+
+const project = getProject(Astro.params.slug ?? "");
+
+if (!project) {
+  return new Response("Projet introuvable", { status: 404 });
+}
+
+const demo = project.links.find((link) => link.kind === "demo");
+const code = project.links.find((link) => link.kind === "code");
+---
+
+<Layout>
+  <main class="pb-20">
+    <section class="relative px-6 pt-28">
+      <div class="mx-auto max-w-6xl">
+        <a class="mb-6 inline-flex items-center gap-2 text-sm font-semibold opacity-70 transition hover:text-primary" href="/projets">
+          <span aria-hidden="true">←</span> Tous les projets
+        </a>
+
+        {project.cover_path && (
+          <div class="project-hero relative overflow-hidden rounded-box border border-base-300 bg-base-200">
+            <img
+              src={project.cover_path}
+              alt={project.cover_alt ?? ""}
+              class="h-[55vh] min-h-80 w-full object-cover sm:h-[65vh]"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-base-100 via-base-100/30 to-transparent"></div>
+            <div class="absolute inset-x-0 bottom-0 p-6 sm:p-10">
+              {project.tags.length > 0 && (
+                <div class="mb-4 flex flex-wrap gap-2">
+                  {project.tags.map((tag) => (
+                    <span class="badge border-primary/30 bg-base-100/85 text-base-content backdrop-blur">{tag.name}</span>
+                  ))}
+                </div>
+              )}
+              <h1 class="max-w-4xl text-4xl font-bold sm:text-6xl">{project.title}</h1>
+              <p class="mt-4 max-w-2xl text-base leading-7 opacity-80 sm:text-lg">{project.summary}</p>
+              {(demo || code) && (
+                <div class="mt-6 flex flex-wrap gap-3">
+                  {demo && <a class="btn btn-primary" href={demo.url} target="_blank" rel="noreferrer">Voir le projet</a>}
+                  {code && <a class="btn btn-outline border-base-300 bg-base-100/80" href={code.url} target="_blank" rel="noreferrer">Voir le code</a>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+
+    <div class="mx-auto max-w-6xl px-6">
+      <section class={`project-explanation-grid mt-16 grid gap-5 ${demo ? "lg:grid-cols-[.8fr_1.2fr]" : "md:grid-cols-2"}`}>
+        <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-1">
+          {project.context && (
+            <article class="project-card rounded-box border border-base-300 bg-base-200 p-6 sm:p-8">
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Contexte</p>
+              <p class="mt-4 leading-8 opacity-80">{project.context}</p>
+            </article>
+          )}
+          {project.objective && (
+            <article class="project-card rounded-box border border-base-300 bg-base-200 p-6 sm:p-8">
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Objectif</p>
+              <p class="mt-4 leading-8 opacity-80">{project.objective}</p>
+            </article>
+          )}
+          {project.result && (
+            <article class="rounded-box border border-primary/30 bg-primary/10 p-6 sm:p-8">
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Résultat</p>
+              <p class="mt-4 leading-8">{project.result}</p>
+            </article>
+          )}
+          {project.learnings && (
+            <article class="rounded-box border border-base-300 bg-base-100 p-6 sm:p-8">
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Ce que j’ai appris</p>
+              <p class="mt-4 leading-8 opacity-80">{project.learnings}</p>
+            </article>
+          )}
+        </div>
+
+        {demo && (
+          <section class="project-preview-column min-w-0 self-start">
+            <div class="mb-6 text-left">
+              <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Aperçu interactif</p>
+              <h2 class="mt-2 text-3xl font-bold">Découvrir le site en direct</h2>
+            </div>
+            <BrowserPreview url={demo.url} title={`Aperçu de ${project.title}`} />
+          </section>
+        )}
+      </section>
+
+      {project.images.length > 0 && (
+        <section class="mt-16" aria-label="Galerie du projet">
+          <div class="mb-6">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Galerie</p>
+            <h2 class="mt-2 text-3xl font-bold">Quelques aperçus</h2>
+          </div>
+          <div class="project-carousel relative overflow-hidden rounded-box border border-base-300 bg-base-200">
+            <div class="project-carousel-track flex transition-transform duration-500 ease-out" data-project-carousel>
+              {project.images.map((image, index) => (
+                <figure class="project-carousel-slide min-w-full" data-slide={index}>
+                  <img src={image.path} alt={image.alt} class="h-[32rem] w-full object-contain bg-base-100" loading="lazy" />
+                  {image.caption && <figcaption class="px-5 py-4 text-sm opacity-70">{image.caption}</figcaption>}
+                </figure>
+              ))}
+            </div>
+            {project.images.length > 1 && (
+              <>
+                <button class="project-carousel-prev btn btn-circle absolute left-4 top-1/2 -translate-y-1/2 bg-base-100/85" type="button" aria-label="Image précédente">←</button>
+                <button class="project-carousel-next btn btn-circle absolute right-4 top-1/2 -translate-y-1/2 bg-base-100/85" type="button" aria-label="Image suivante">→</button>
+              </>
+            )}
+          </div>
+          {project.images.length > 1 && (
+            <div class="mt-4 flex justify-center gap-2" data-project-dots>
+              {project.images.map((_, index) => (
+                <button class="h-2 w-2 rounded-full bg-base-300 transition-all" type="button" data-slide-dot={index} aria-label={`Afficher l'image ${index + 1}`}></button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {project.skills.length > 0 && (
+        <section class="mt-16">
+          <div class="mb-6">
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Compétences utilisées</p>
+            <h2 class="mt-2 text-3xl font-bold">Ce projet m’a demandé</h2>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {project.skills.map((skill) => (
+              <details class="skill-summary project-card group rounded-box border border-base-300 bg-base-200 shadow-sm">
+                <summary class="flex cursor-pointer list-none items-center gap-4 p-5 [&::-webkit-details-marker]:hidden">
+                  {skill.logo_path ? (
+                    <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-box bg-base-100 p-2">
+                      <img src={skill.logo_path} alt={`Logo ${skill.name}`} class="h-full w-full object-contain" loading="lazy" />
+                    </span>
+                  ) : (
+                    <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-box bg-base-100 text-xl font-bold text-primary">{skill.name.charAt(0)}</span>
+                  )}
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate font-semibold">{skill.name}</span>
+                    <span class="mt-1 block text-sm opacity-60">Maîtrise {skill.level}/5</span>
+                  </span>
+                  <span class="text-lg opacity-50 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+                </summary>
+                <div class="skill-details border-t border-base-300 px-5 pb-5 pt-4 text-sm">
+                  {skill.description && <p class="leading-6 opacity-80">{skill.description}</p>}
+                  {skill.usage_note && <p class="mt-3 border-l-2 border-primary pl-3 font-medium">Utilisation : {skill.usage_note}</p>}
+                  {skill.opinion && <p class="mt-3 italic opacity-75">{skill.opinion}</p>}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {project.links.length > 0 && (
+        <section class="mt-16 flex flex-wrap items-center justify-between gap-5 rounded-box border border-primary/20 bg-primary/10 p-6 sm:p-8">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Découvrir</p>
+            <h2 class="mt-2 text-2xl font-bold">Explorer le projet</h2>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            {project.links.map((link) => (
+              <a class="btn btn-outline border-primary/30 bg-base-100/70" href={link.url} target="_blank" rel="noreferrer">{link.label}</a>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </main>
+
+  <script>
+    document.querySelectorAll<HTMLDetailsElement>(".skill-summary").forEach((details) => {
+      const summary = details.querySelector("summary");
+      const content = details.querySelector<HTMLElement>(".skill-details");
+      if (!summary || !content) return;
+
+      const updateHeight = () => {
+        details.style.setProperty("--skill-details-height", `${content.scrollHeight}px`);
+      };
+      updateHeight();
+      window.addEventListener("resize", updateHeight);
+
+      summary.addEventListener("click", (event) => {
+        if (!details.open) return;
+        event.preventDefault();
+        details.classList.add("is-closing");
+        window.setTimeout(() => {
+          details.open = false;
+          details.classList.remove("is-closing");
+        }, 350);
+      });
+    });
+
+    const previewGrid = document.querySelector<HTMLElement>(".project-explanation-grid");
+    const previewColumn = document.querySelector<HTMLElement>(".project-preview-column");
+
+    if (previewGrid && previewColumn) {
+      let previewY = 0;
+
+      const followPreview = () => {
+        if (!window.matchMedia("(min-width: 1024px)").matches) {
+          previewY = 0;
+          previewColumn.style.transform = "translate3d(0, 0, 0)";
+          return;
+        }
+
+        const gridRect = previewGrid.getBoundingClientRect();
+        const previewRect = previewColumn.getBoundingClientRect();
+        const baseTop = previewRect.top - previewY;
+        const previewHeight = previewColumn.offsetHeight;
+        const viewportCenter = window.innerHeight / 2;
+
+        const desiredY = viewportCenter - previewHeight / 2 - baseTop;
+        const minY = gridRect.top - baseTop;
+        const maxY = gridRect.bottom - previewHeight - baseTop;
+        const clampedY = Math.max(minY, Math.min(desiredY, maxY));
+
+        previewY += (clampedY - previewY) * 0.08;
+        previewColumn.style.transform = `translate3d(0, ${previewY.toFixed(2)}px, 0)`;
+        previewColumn.style.willChange = "transform";
+      };
+
+      const animatePreview = () => {
+        followPreview();
+        requestAnimationFrame(animatePreview);
+      };
+
+      requestAnimationFrame(animatePreview);
+      window.addEventListener("resize", followPreview);
+    }
+
+    document.querySelectorAll<HTMLElement>(".project-carousel").forEach((carousel) => {
+      const track = carousel.querySelector<HTMLElement>("[data-project-carousel]");
+      const slides = carousel.querySelectorAll<HTMLElement>("[data-slide]");
+      const prev = carousel.querySelector<HTMLButtonElement>(".project-carousel-prev");
+      const next = carousel.querySelector<HTMLButtonElement>(".project-carousel-next");
+      const dots = document.querySelectorAll<HTMLButtonElement>("[data-slide-dot]");
+      let current = 0;
+
+      const show = (index: number) => {
+        current = (index + slides.length) % slides.length;
+        if (track) track.style.transform = `translateX(-${current * 100}%)`;
+        dots.forEach((dot, dotIndex) => {
+          dot.classList.toggle("w-7", dotIndex === current);
+          dot.classList.toggle("bg-primary", dotIndex === current);
+          dot.classList.toggle("bg-base-300", dotIndex !== current);
+        });
+      };
+
+      prev?.addEventListener("click", () => show(current - 1));
+      next?.addEventListener("click", () => show(current + 1));
+      dots.forEach((dot) => dot.addEventListener("click", () => show(Number(dot.dataset.slideDot))));
+      show(0);
+    });
+  </script>
+</Layout>

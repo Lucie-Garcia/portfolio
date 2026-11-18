@@ -1,0 +1,136 @@
+---
+import { getSkills } from "../lib/queries";
+
+const skills = getSkills();
+const categories = new Map<string, string>([
+  ["langage", "Langages"],
+  ["framework", "Frameworks"],
+  ["outil", "Outils"],
+  ["design", "Design"],
+  ["autre", "Autres"],
+]);
+---
+
+<section id="skills" class="mx-auto max-w-6xl px-6 py-16">
+  <div class="mx-auto mb-10 max-w-2xl text-center">
+    <p
+      class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-primary"
+    >
+      Savoir-faire
+    </p>
+    <h2 class="text-4xl font-bold sm:text-5xl">Compétences techniques</h2>
+    <p class="mt-4 opacity-75">
+      Les outils et technologies que j’utilise pour donner vie à mes projets.
+    </p>
+  </div>
+
+  {
+    skills.length > 0 ? (
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {skills.map((skill) => (
+          <details class="skill-summary group rounded-box border border-base-300 bg-base-200 shadow-sm transition">
+            <summary class="flex cursor-pointer list-none items-center gap-4 p-5 [&::-webkit-details-marker]:hidden">
+              <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-box bg-base-100 p-2">
+                {skill.logo_path ? (
+                  <img
+                    src={skill.logo_path}
+                    alt={`Logo ${skill.name}`}
+                    class="h-full w-full object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span
+                    class="text-xl font-bold text-primary"
+                    aria-hidden="true"
+                  >
+                    {skill.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-lg font-semibold">
+                  {skill.name}
+                </span>
+                <span class="mt-1 block text-sm opacity-60">
+                  {categories.get(skill.category) ?? skill.category}
+                </span>
+              </span>
+              <span class="flex shrink-0 flex-col items-end gap-1">
+                <span class="text-sm font-semibold">{skill.level}/5</span>
+                <span
+                  class="flex gap-0.5"
+                  aria-label={`Maîtrise : ${skill.level} sur 5`}
+                >
+                  {[1, 2, 3, 4, 5].map((step) => (
+                    <span
+                      class={`h-1.5 w-3 rounded-full ${step <= skill.level ? "bg-primary" : "bg-base-300"}`}
+                    />
+                  ))}
+                </span>
+              </span>
+              <span
+                class="text-lg opacity-50 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              >
+                ⌄
+              </span>
+            </summary>
+            <div class="skill-details">
+              <div class="border-t border-base-300 px-5 pb-5 pt-4 text-sm">
+                {skill.description && (
+                  <p class="leading-6 opacity-80">{skill.description}</p>
+                )}
+                {skill.opinion && (
+                  <p class="mt-3 border-l-2 border-primary pl-3 italic opacity-75">
+                    {skill.opinion}
+                  </p>
+                )}
+                {!skill.description && !skill.opinion && (
+                  <p class="opacity-60">
+                    Aucun détail supplémentaire pour le moment.
+                  </p>
+                )}
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+    ) : (
+      <p class="text-center opacity-70">
+        Les compétences seront bientôt disponibles.
+      </p>
+    )
+  }
+</section>
+
+<script>
+  document
+    .querySelectorAll<HTMLDetailsElement>(".skill-summary")
+    .forEach((details) => {
+      const summary = details.querySelector("summary");
+      const content = details.querySelector<HTMLElement>(".skill-details");
+      if (!summary || !content) return;
+
+      const updateContentHeight = () => {
+        details.style.setProperty(
+          "--skill-details-height",
+          `${content.scrollHeight}px`,
+        );
+      };
+
+      updateContentHeight();
+      window.addEventListener("resize", updateContentHeight);
+
+      summary.addEventListener("click", (event) => {
+        if (!details.open) return;
+
+        event.preventDefault();
+        details.classList.add("is-closing");
+
+        window.setTimeout(() => {
+          details.open = false;
+          details.classList.remove("is-closing");
+        }, 350);
+      });
+    });
+</script>

@@ -1,0 +1,40 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { allowAttempt, createSession, verifyPassword } from "../../lib/auth";
+
+let error = "";
+if (Astro.request.method === "POST") {
+  const ip = Astro.clientAddress ?? "unknown";
+  if (!allowAttempt(ip)) {
+    error = "Trop de tentatives. Réessaie plus tard.";
+  } else {
+    const form = await Astro.request.formData();
+    if (verifyPassword(String(form.get("password") ?? ""))) {
+      Astro.cookies.set("admin", createSession(), {
+        httpOnly: true,
+        secure: import.meta.env.PROD,
+        sameSite: "strict",
+        path: "/",
+        maxAge: 7200,
+      });
+      return Astro.redirect("/admin");
+    }
+    error = "Mot de passe incorrect.";
+  }
+}
+---
+
+<Layout>
+  <main class="mx-auto max-w-md px-6 py-32">
+    <h1 class="text-4xl font-bold">Administration</h1>
+    <p class="mt-2 opacity-70">Accès réservé.</p>
+    <form method="post" class="mt-8 flex flex-col gap-4">
+      <label class="form-control">
+        <span class="label-text mb-2">Mot de passe</span>
+        <input class="input input-bordered" type="password" name="password" required autofocus />
+      </label>
+      {error && <p class="text-error">{error}</p>}
+      <button class="btn btn-primary" type="submit">Entrer</button>
+    </form>
+  </main>
+</Layout>

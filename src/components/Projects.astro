@@ -1,0 +1,131 @@
+---
+import { getProjects } from "../lib/queries";
+
+interface Props {
+  showHeading?: boolean;
+}
+
+const { showHeading = true } = Astro.props;
+const projects = getProjects();
+
+const availableTags = Array.from(
+  new Map(
+    projects.flatMap((project) => project.tags).map((tag) => [tag.slug, tag]),
+  ).values(),
+).sort((a, b) => a.name.localeCompare(b.name, "fr"));
+---
+
+<section id="projects" class="mx-auto max-w-6xl px-6 py-16">
+  {
+    showHeading && (
+      <h1 class="mb-10 text-center text-4xl sm:text-5xl md:text-6xl">
+        Mes projets
+      </h1>
+    )
+  }
+
+  {availableTags.length > 0 && (
+    <div class="project-filters mb-8 flex flex-wrap justify-center gap-2" aria-label="Filtrer les projets par tag">
+      <button
+        type="button"
+        class="btn btn-sm btn-primary project-filter is-active"
+        data-project-filter="all"
+        aria-pressed="true"
+      >
+        Tous
+      </button>
+      {availableTags.map((tag) => (
+        <button
+          type="button"
+          class="btn btn-sm btn-outline project-filter"
+          data-project-filter={tag.slug}
+          aria-pressed="false"
+        >
+          {tag.name}
+        </button>
+      ))}
+    </div>
+  )}
+
+  {
+    projects.length > 0 ? (
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" data-project-grid>
+        {projects.map((project) => (
+          <a
+            href={`/projets/${project.slug}`}
+            class="project-card group flex h-full flex-col overflow-hidden rounded-box border border-base-300 bg-base-200 shadow-sm transition duration-300 hover:-translate-y-1"
+            data-project-tags={project.tags.map((tag) => tag.slug).join("|")}
+          >
+            {project.cover_path && (
+              <img
+                src={project.cover_path}
+                alt={project.cover_alt ?? ""}
+                class="aspect-video w-full object-cover transition duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+            )}
+            <div class="flex flex-1 flex-col p-5">
+              <h2 class="text-xl font-semibold">{project.title}</h2>
+              {project.tags.length > 0 && (
+                <div class="mt-4 flex flex-wrap gap-2">
+                  {project.tags.map((tag) => (
+                    <span class="badge badge-primary badge-sm">{tag.name}</span>
+                  ))}
+                </div>
+              )}
+              <p class="mt-2 line-clamp-3 text-sm leading-6 opacity-75">
+                {project.summary}
+              </p>
+
+              <span class="mt-5 text-sm font-semibold text-primary">
+                Découvrir le projet <span aria-hidden="true">→</span>
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <p class="text-center opacity-70">
+        Les projets seront bientôt disponibles.
+      </p>
+    )
+  }
+</section>
+
+<script>
+  const filterContainer = document.querySelector<HTMLElement>(".project-filters");
+  const projectGrid = document.querySelector<HTMLElement>("[data-project-grid]");
+
+  if (filterContainer && projectGrid) {
+    const filters = Array.from(
+      filterContainer.querySelectorAll<HTMLButtonElement>("[data-project-filter]"),
+    );
+    const cards = Array.from(
+      projectGrid.querySelectorAll<HTMLElement>("[data-project-tags]"),
+    );
+
+    const applyFilter = (slug: string) => {
+      filters.forEach((filter) => {
+        const active = filter.dataset.projectFilter === slug;
+        filter.classList.toggle("btn-primary", active);
+        filter.classList.toggle("btn-outline", !active);
+        filter.classList.toggle("is-active", active);
+        filter.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+
+      cards.forEach((card) => {
+        const tags = (card.dataset.projectTags ?? "").split("|").filter(Boolean);
+        const visible = slug === "all" || tags.includes(slug);
+
+        card.classList.toggle("hidden", !visible);
+        card.setAttribute("aria-hidden", visible ? "false" : "true");
+      });
+    };
+
+    filters.forEach((filter) => {
+      filter.addEventListener("click", () => {
+        applyFilter(filter.dataset.projectFilter ?? "all");
+      });
+    });
+  }
+</script>

@@ -1,0 +1,36 @@
+<div class="cursor-glow" aria-hidden="true" data-cursor-glow></div>
+
+<script>
+  const glow = document.querySelector<HTMLElement>("[data-cursor-glow]");
+
+  if (glow) {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let targetX = -300;
+    let targetY = -300;
+    let currentX = targetX;
+    let currentY = targetY;
+
+    const update = () => {
+      currentX += (targetX - currentX) * 0.12;
+      currentY += (targetY - currentY) * 0.12;
+      glow.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+      requestAnimationFrame(update);
+    };
+
+    window.addEventListener("pointermove", (event) => {
+      targetX = event.clientX;
+      targetY = event.clientY;
+      glow.classList.add("is-visible");
+    });
+
+    window.addEventListener("pointerleave", () => {
+      glow.classList.remove("is-visible");
+    });
+
+    if (reduce) {
+      glow.style.transition = "none";
+    }
+
+    requestAnimationFrame(update);
+  }
+</script>

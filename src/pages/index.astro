@@ -1,5 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import Projects from "../components/Projects.astro";
+import AnimatedWaves from "../components/AnimatedWaves.astro";
 ---
 
 <Layout>
@@ -8,7 +10,7 @@ import Layout from "../layouts/Layout.astro";
     class="hero-page relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden bg-base-100 text-base-content"
   >
     <div id="glow"></div>
-    <canvas id="waves" aria-hidden="true"></canvas>
+    <AnimatedWaves />
     <span class="badge">✨ Mon portfolio</span>
 
     <h1
@@ -24,9 +26,10 @@ import Layout from "../layouts/Layout.astro";
     </p>
 
     <div class="mt-8 flex flex-wrap justify-center gap-3">
-      <button
+      <a
+        href="/projets"
         class="btn btn-lg project-button bg-sand-shine sand-shimmer hover:-translate-y-0.5"
-        >Voir mes projets</button
+        >Voir mes projets</a
       >
       <button class="btn btn-primary btn-lg hover:-translate-y-0.5"
         >Mon CV</button
@@ -57,6 +60,8 @@ import Layout from "../layouts/Layout.astro";
     </div>
   </hero>
 
+  <Projects />
+  <!--
   <h1
     id="projects"
     class="text-4xl sm:text-5xl md:text-6xl text-center mt-16 mb-8"
@@ -102,371 +107,168 @@ import Layout from "../layouts/Layout.astro";
         </label>
       </div>
 
-      <script>
-        (function () {
-          var hero = document.getElementById("hero");
-          var title = document.getElementById("title");
-          var glow = document.getElementById("glow");
-          var themeToggle = document.getElementById("theme-toggle");
-          var root = document.documentElement;
-          if (
-            !(hero instanceof HTMLElement) ||
-            !(title instanceof HTMLElement) ||
-            !(glow instanceof HTMLElement) ||
-            !(themeToggle instanceof HTMLInputElement)
-          ) {
-            return;
-          }
-          var reduce = window.matchMedia(
-            "(prefers-reduced-motion: reduce)",
-          ).matches;
+  -->
 
-          function updateTheme(theme) {
-            var dark = theme === "sable-rose-dark";
-            root?.dataset && (root.dataset.theme = theme);
-            themeToggle?.setAttribute(
-              "aria-label",
-              dark ? "Activer le thème clair" : "Activer le thème sombre",
-            );
-            themeToggle.checked = dark;
-          }
+  <script>
+    (function () {
+      var hero = document.getElementById("hero");
+      var title = document.getElementById("title");
+      var glow = document.getElementById("glow");
+      if (
+        !(hero instanceof HTMLElement) ||
+        !(title instanceof HTMLElement) ||
+        !(glow instanceof HTMLElement)
+      ) {
+        return;
+      }
+      var reduce = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
 
-          var savedTheme = window.localStorage.getItem("portfolio-theme");
-          updateTheme(
-            savedTheme === "sable-rose-dark" ? savedTheme : "sable-rose",
-          );
-          themeToggle?.addEventListener("change", function () {
-            var theme =
-              root?.dataset.theme === "sable-rose-dark"
-                ? "sable-rose"
-                : "sable-rose-dark";
-            updateTheme(theme);
-            window.localStorage?.setItem("portfolio-theme", theme);
-          });
-
-          // 1. Découpe le titre en mots puis en lettres
-          var chars = [];
-          ["Lucie", "Créative & Dev"].forEach(function (line, li) {
-            if (li) title?.appendChild(document.createElement("br"));
-            var wrap = document.createElement("span");
-            wrap?.setAttribute("aria-hidden", "true");
-            line.split(" ").forEach(function (w, wi) {
-              if (wi) wrap?.appendChild(document.createTextNode(" "));
-              var word = document.createElement("span");
-              word.className = "word";
-              w.split("").forEach(function (c) {
-                var s = document.createElement("span");
-                s.className = "ch";
-                s.textContent = c;
-                word?.appendChild(s);
-                chars.push({
-                  el: s,
-                  x: 0,
-                  y: 0,
-                  tx: 0,
-                  ty: 0,
-                  sc: 1,
-                  rot: 0,
-                  ox: 0,
-                  oy: 0,
-                });
-              });
-              wrap?.appendChild(word);
+      // 1. Découpe le titre en mots puis en lettres
+      var chars = [];
+      ["Lucie", "Créative & Dev"].forEach(function (line, li) {
+        if (li) title?.appendChild(document.createElement("br"));
+        var wrap = document.createElement("span");
+        wrap?.setAttribute("aria-hidden", "true");
+        line.split(" ").forEach(function (w, wi) {
+          if (wi) wrap?.appendChild(document.createTextNode(" "));
+          var word = document.createElement("span");
+          word.className = "word";
+          w.split("").forEach(function (c) {
+            var s = document.createElement("span");
+            s.className = "ch";
+            s.textContent = c;
+            word?.appendChild(s);
+            chars.push({
+              el: s,
+              x: 0,
+              y: 0,
+              tx: 0,
+              ty: 0,
+              sc: 1,
+              rot: 0,
+              ox: 0,
+              oy: 0,
             });
-            title?.appendChild(wrap);
           });
+          wrap?.appendChild(word);
+        });
+        title?.appendChild(wrap);
+      });
 
-          // 2. Mesure : position de repos de chaque lettre (ignore les transforms)
-          function measure() {
-            var w = title?.offsetWidth ?? 0;
-            title?.style.setProperty("--w", w + "px");
-            chars.forEach(function (c) {
-              var el = c.el,
-                left = el.offsetLeft,
-                top = el.offsetTop,
-                p = el.offsetParent;
-              while (p && p !== title) {
-                left += p.offsetLeft;
-                top += p.offsetTop;
-                p = p.offsetParent;
-              }
-              c.ox = left + el.offsetWidth / 2;
-              c.oy = top + el.offsetHeight / 2;
-              el?.style.setProperty("--x", left + "px");
-            });
+      // 2. Mesure : position de repos de chaque lettre (ignore les transforms)
+      function measure() {
+        var w = title?.offsetWidth ?? 0;
+        title?.style.setProperty("--w", w + "px");
+        chars.forEach(function (c) {
+          var el = c.el,
+            left = el.offsetLeft,
+            top = el.offsetTop,
+            p = el.offsetParent;
+          while (p && p !== title) {
+            left += p.offsetLeft;
+            top += p.offsetTop;
+            p = p.offsetParent;
           }
-          measure();
-          if (document.fonts && document.fonts.ready)
-            document.fonts.ready.then(measure);
-          window?.addEventListener("resize", measure);
+          c.ox = left + el.offsetWidth / 2;
+          c.oy = top + el.offsetHeight / 2;
+          el?.style.setProperty("--x", left + "px");
+        });
+      }
+      measure();
+      if (document.fonts && document.fonts.ready)
+        document.fonts.ready.then(measure);
+      window?.addEventListener("resize", measure);
 
-          // 3. Souris
-          var mx = -9999,
-            my = -9999,
-            gx = 0,
-            gy = 0,
-            gTargetX = 0,
-            gTargetY = 0,
-            shiftT = 0,
-            shift = 0;
-          hero?.addEventListener("pointermove", function (e) {
-            mx = e.clientX;
-            my = e.clientY;
-            var r = hero?.getBoundingClientRect();
-            if (!r) return;
-            gTargetX = mx - r.left;
-            gTargetY = my - r.top;
-            shiftT = (mx / window.innerWidth) * (title?.offsetWidth ?? 0);
-            hero?.classList.add("active");
-          });
-          hero?.addEventListener("pointerleave", function () {
-            mx = my = -9999;
-            hero?.classList.remove("active");
-          });
+      // 3. Souris
+      var mx = -9999,
+        my = -9999,
+        gx = 0,
+        gy = 0,
+        gTargetX = 0,
+        gTargetY = 0,
+        shiftT = 0,
+        shift = 0;
+      hero?.addEventListener("pointermove", function (e) {
+        mx = e.clientX;
+        my = e.clientY;
+        var r = hero?.getBoundingClientRect();
+        if (!r) return;
+        gTargetX = mx - r.left;
+        gTargetY = my - r.top;
+        shiftT = (mx / window.innerWidth) * (title?.offsetWidth ?? 0);
+        hero?.classList.add("active");
+      });
+      hero?.addEventListener("pointerleave", function () {
+        mx = my = -9999;
+        hero?.classList.remove("active");
+      });
 
-          // 4. Boucle d’animation
-          var R = 230,
-            t0 = performance.now();
-          function frame(now) {
-            var t = (now - t0) / 1000;
-            var tr = title?.getBoundingClientRect();
-            if (!tr) return;
+      // 4. Boucle d’animation
+      var R = 230,
+        t0 = performance.now();
+      function frame(now) {
+        var t = (now - t0) / 1000;
+        var tr = title?.getBoundingClientRect();
+        if (!tr) return;
 
-            chars.forEach(function (c, i) {
-              var tx = 0,
-                ty = 0,
-                sc = 1,
-                rot = 0;
-              if (!reduce) {
-                var cx = tr.left + c.ox,
-                  cy = tr.top + c.oy;
-                var dx = cx - mx,
-                  dy = cy - my,
-                  d = Math.hypot(dx, dy) || 1;
-                var f = Math.max(0, 1 - d / R);
-                f = f * f;
-                tx = (dx / d) * f * 46;
-                ty = (dy / d) * f * 46 + Math.sin(t * 1.6 + i * 0.55) * 3; // flottement léger au repos
-                sc = 1 + f * 0.4;
-                rot = (dx / R) * f * 18;
-              }
-              c.tx += (tx - c.tx) * 0.12;
-              c.ty += (ty - c.ty) * 0.12;
-              c.sc += (sc - c.sc) * 0.12;
-              c.rot += (rot - c.rot) * 0.12;
-              c.el?.style &&
-                (c.el.style.transform =
-                  "translate3d(" +
-                  c.tx.toFixed(2) +
-                  "px," +
-                  c.ty.toFixed(2) +
-                  "px,0) rotate(" +
-                  c.rot.toFixed(2) +
-                  "deg) scale(" +
-                  c.sc.toFixed(3) +
-                  ")");
-            });
-
-            // reflet : suit la souris + dérive lente
-            shift += (shiftT - shift) * 0.06;
-            title?.style.setProperty(
-              "--shift",
-              (shift + (reduce ? 0 : t * 18)).toFixed(1) + "px",
-            );
-
-            // halo lumineux derrière le curseur
-            gx += (gTargetX - gx) * 0.1;
-            gy += (gTargetY - gy) * 0.1;
-            glow?.style &&
-              (glow.style.transform =
-                "translate3d(" +
-                gx.toFixed(1) +
-                "px," +
-                gy.toFixed(1) +
-                "px,0)");
-
-            requestAnimationFrame(frame);
+        chars.forEach(function (c, i) {
+          var tx = 0,
+            ty = 0,
+            sc = 1,
+            rot = 0;
+          if (!reduce) {
+            var cx = tr.left + c.ox,
+              cy = tr.top + c.oy;
+            var dx = cx - mx,
+              dy = cy - my,
+              d = Math.hypot(dx, dy) || 1;
+            var f = Math.max(0, 1 - d / R);
+            f = f * f;
+            tx = (dx / d) * f * 46;
+            ty = (dy / d) * f * 46 + Math.sin(t * 1.6 + i * 0.55) * 3; // flottement léger au repos
+            sc = 1 + f * 0.4;
+            rot = (dx / R) * f * 18;
           }
-          requestAnimationFrame(frame);
+          c.tx += (tx - c.tx) * 0.12;
+          c.ty += (ty - c.ty) * 0.12;
+          c.sc += (sc - c.sc) * 0.12;
+          c.rot += (rot - c.rot) * 0.12;
+          c.el?.style &&
+            (c.el.style.transform =
+              "translate3d(" +
+              c.tx.toFixed(2) +
+              "px," +
+              c.ty.toFixed(2) +
+              "px,0) rotate(" +
+              c.rot.toFixed(2) +
+              "deg) scale(" +
+              c.sc.toFixed(3) +
+              ")");
+        });
 
-          // 5. Voiles ondulants (canvas 2D)
-          var canvas = document.getElementById("waves");
-          if (!(canvas instanceof HTMLCanvasElement)) {
-            return;
-          }
-          var context = canvas.getContext("2d");
-          if (!context) {
-            return;
-          }
-          var width = 0;
-          var height = 0;
-          var mobile = false;
+        // reflet : suit la souris + dérive lente
+        shift += (shiftT - shift) * 0.06;
+        title?.style.setProperty(
+          "--shift",
+          (shift + (reduce ? 0 : t * 18)).toFixed(1) + "px",
+        );
 
-          function resizeCanvas() {
-            var dpr = Math.min(window.devicePixelRatio || 1, 2);
-            width = hero?.clientWidth ?? 0;
-            height = hero?.clientHeight ?? 0;
-            mobile = width < 640;
-            if (canvas) {
-              canvas.width = width * dpr;
-              canvas.height = height * dpr;
-            }
-            context?.setTransform(dpr, 0, 0, dpr, 0, 0);
-          }
+        // halo lumineux derrière le curseur
+        gx += (gTargetX - gx) * 0.1;
+        gy += (gTargetY - gy) * 0.1;
+        glow?.style &&
+          (glow.style.transform =
+            "translate3d(" + gx.toFixed(1) + "px," + gy.toFixed(1) + "px,0)");
 
-          resizeCanvas();
-          window?.addEventListener("resize", resizeCanvas);
-
-          var layers = [
-            {
-              y: 0.68,
-              amplitude: 34,
-              frequency: 1.3,
-              speed: 0.35,
-              phase: 0,
-              color: "rgba(243,220,203,.55)",
-            },
-            {
-              y: 0.75,
-              amplitude: 28,
-              frequency: 1.8,
-              speed: -0.5,
-              phase: 1.7,
-              color: "rgba(232,191,179,.5)",
-            },
-            {
-              y: 0.82,
-              amplitude: 24,
-              frequency: 2.4,
-              speed: 0.65,
-              phase: 3.1,
-              color: "rgba(251,235,223,.6)",
-            },
-            {
-              y: 0.89,
-              amplitude: 20,
-              frequency: 3,
-              speed: -0.8,
-              phase: 4.6,
-              color: "rgba(216,167,160,.45)",
-            },
-            {
-              y: 0.1,
-              amplitude: 22,
-              frequency: 1.6,
-              speed: -0.4,
-              phase: 2.2,
-              color: "rgba(232,191,179,.4)",
-              top: true,
-            },
-            {
-              y: 0.17,
-              amplitude: 18,
-              frequency: 2.2,
-              speed: 0.55,
-              phase: 5,
-              color: "rgba(243,220,203,.45)",
-              top: true,
-            },
-          ];
-          var waveX = 0;
-          var waveY = 0;
-          var presence = 0;
-          var energy = 0;
-          var lastMouseX = 0;
-          var lastMouseY = 0;
-
-          function drawWaves(now) {
-            var time = reduce ? 0 : (now - t0) / 1000;
-            var bounds = canvas?.getBoundingClientRect();
-            if (!bounds) return;
-            var active = !reduce && mx > -1000;
-
-            if (active) {
-              if (presence < 0.02) {
-                waveX = mx - bounds.left;
-                waveY = my - bounds.top;
-                lastMouseX = mx;
-                lastMouseY = my;
-              }
-              var speed = Math.hypot(mx - lastMouseX, my - lastMouseY);
-              lastMouseX = mx;
-              lastMouseY = my;
-              energy += ((Math.min(speed, 50) / 50) * 1.4 - energy) * 0.06;
-              waveX += (mx - bounds.left - waveX) * 0.1;
-              waveY += (my - bounds.top - waveY) * 0.1;
-            } else {
-              energy *= 0.95;
-            }
-            presence += ((active ? 1 : 0) - presence) * 0.04;
-
-            context?.clearRect(0, 0, width, height);
-            var step = mobile ? 4 : 6;
-
-            layers.forEach(function (layer) {
-              var amplitude = layer.amplitude * (mobile ? 0.78 : 1);
-              var frequency = layer.frequency * (mobile ? 0.55 : 1);
-              var base = layer.y * height;
-              var position = (waveY - base) / (height * 0.18);
-              var pull =
-                position * Math.exp(0.5 - (position * position) / 2) * presence;
-              var proximity = Math.exp((-position * position) / 2) * presence;
-              context?.beginPath();
-
-              for (var x = 0; x <= width + step; x += step) {
-                var wave = (x / width) * frequency * Math.PI * 2;
-                var y =
-                  base +
-                  amplitude *
-                    (Math.sin(wave + time * layer.speed + layer.phase) +
-                      0.5 *
-                        Math.sin(
-                          wave * 2.1 - time * layer.speed * 1.3 + layer.phase,
-                        ));
-                if (presence > 0.001) {
-                  var distance = x - waveX;
-                  y +=
-                    pull *
-                    55 *
-                    Math.exp(-(distance * distance) / (2 * 170 * 170));
-                  y +=
-                    Math.sin(distance / 38 - time * 5) *
-                    Math.exp(-Math.abs(distance) / 230) *
-                    energy *
-                    11 *
-                    proximity;
-                }
-                if (x === 0) context?.moveTo(x, y);
-                else context?.lineTo(x, y);
-              }
-
-              var edge = layer.top ? 0 : height;
-              var gradient = context?.createLinearGradient(
-                0,
-                layer.top ? base + amplitude : base - amplitude,
-                0,
-                edge,
-              );
-              gradient?.addColorStop(0, layer.color);
-              gradient?.addColorStop(1, "rgba(255,255,255,0)");
-              if (context && gradient) {
-                context.strokeStyle = "rgba(255,255,255,.45)";
-                context.lineWidth = 1.2;
-                context.stroke();
-                context.lineTo(width + step, edge);
-                context.lineTo(0, edge);
-                context.closePath();
-                context.fillStyle = gradient;
-                context.fill();
-              }
-            });
-
-            requestAnimationFrame(drawWaves);
-          }
-
-          requestAnimationFrame(drawWaves);
-        })();
-      </script>
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+  <!--
     </a>
-  </div></Layout
->
+    </div>
+    -->
+</Layout>

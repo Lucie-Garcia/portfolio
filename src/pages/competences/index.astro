@@ -1,0 +1,16 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Skills from "../../components/Skills.astro";
+import AnimatedWaves from "../../components/AnimatedWaves.astro";
+---
+
+<Layout>
+  <main class="pt-24">
+    <section class="relative min-h-screen overflow-hidden">
+      <AnimatedWaves class="skills-page-waves" />
+      <div class="relative z-10">
+        <Skills />
+      </div>
+    </section>
+  </main>
+</Layout>
