@@ -83,7 +83,7 @@ export function getProjects(tag: string | null = null): ProjectCard[] {
              WHERE pt.project_id = p.id AND t.slug = @tag
            )
          )
-       ORDER BY p.is_featured DESC, p.started_on DESC, p.sort_order, p.title`,
+       ORDER BY p.started_on DESC, p.is_featured DESC, p.sort_order, p.title`,
     )
     .all({ tag }) as Array<Omit<ProjectCard, "tags"> & { tag_names: string | null }>;
 
@@ -91,9 +91,9 @@ export function getProjects(tag: string | null = null): ProjectCard[] {
     ...project,
     tags: tag_names
       ? tag_names.split("|").map((name) => ({
-          name,
-          slug: name.toLowerCase().replace(/\s+/g, "-"),
-        }))
+        name,
+        slug: name.toLowerCase().replace(/\s+/g, "-"),
+      }))
       : [],
   }));
 }

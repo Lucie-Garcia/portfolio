@@ -337,9 +337,31 @@ body:has(#hero) .cursor-glow {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .skill-details,
     .skill-summary {
         transition: none;
+    }
+}
+
+@media (hover: none),
+(pointer: coarse) {
+
+    #glow,
+    .cursor-glow {
+        display: none;
+    }
+
+    .bg-sand-shine:hover,
+    .sable-rose-dark .project-button:hover,
+    [data-theme="sable-rose-dark"] .project-button:hover,
+    .skill-summary:hover,
+    .project-card:hover {
+        border-color: inherit;
+        box-shadow: none;
+        background-position: initial;
+        color: inherit;
+        transform: none;
     }
 }
 
@@ -390,6 +412,14 @@ body:has(#hero) .cursor-glow {
     .scroll-cue {
         animation: none;
     }
+}
+
+.site-footer {
+    background-color: color-mix(in srgb, var(--color-base-100) 42%, transparent) !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-base-content) 10%, transparent);
+    box-shadow: 0 -4px 24px color-mix(in srgb, var(--color-base-content) 6%, transparent);
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
 }
 
 .site-header {

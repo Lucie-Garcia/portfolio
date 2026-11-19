@@ -1,0 +1,40 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AnimatedWaves from "../components/AnimatedWaves.astro";
+---
+
+<Layout>
+  <main class="relative min-h-screen overflow-hidden pt-24">
+    <AnimatedWaves class="skills-page-waves" />
+
+    <section class="relative z-10 mx-auto flex min-h-[calc(100vh-6rem)] max-w-4xl items-center px-6 py-16">
+      <div class="mx-auto w-full max-w-2xl text-center">
+        <div
+          class="mx-auto mb-8 flex h-28 w-28 items-center justify-center rounded-full border border-primary/30 bg-base-200/90 font-serif text-5xl font-bold text-primary shadow-sm backdrop-blur-sm"
+          aria-hidden="true"
+        >
+          404
+        </div>
+
+        <p class="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+          Page introuvable
+        </p>
+        <h1 class="text-4xl font-bold sm:text-5xl">
+          Cette page s’est égarée.
+        </h1>
+        <p class="mx-auto mt-5 max-w-md text-base leading-7 opacity-75 sm:text-lg">
+          Aucun souci, on peut revenir sur un chemin plus familier.
+        </p>
+
+        <div class="mt-8 flex flex-wrap justify-center gap-3">
+          <a href="/" class="btn btn-lg btn-primary">
+            Retour à l’accueil
+          </a>
+          <a href="/projets" class="btn btn-lg btn-outline">
+            Voir les projets
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>

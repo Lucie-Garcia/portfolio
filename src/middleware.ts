@@ -2,11 +2,11 @@ import { defineMiddleware } from "astro:middleware";
 import { isValidSession } from "./lib/auth";
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const isAdmin = context.url.pathname.startsWith("/admin");
-  const isLogin = context.url.pathname === "/admin/login";
+  const isAdmin = context.url.pathname.startsWith("/spoke");
+  const isLogin = context.url.pathname === "/spoke/login";
 
   if (isAdmin && !isLogin && !isValidSession(context.cookies.get("admin")?.value)) {
-    return context.redirect("/admin/login");
+    return context.redirect("/spoke/login");
   }
 
   const response = await next();

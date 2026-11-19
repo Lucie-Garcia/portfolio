@@ -26,6 +26,7 @@ const { class: className = "" } = Astro.props;
     if (!container || !context) return;
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     let width = 0;
     let height = 0;
     let mobile = false;
@@ -50,18 +51,29 @@ const { class: className = "" } = Astro.props;
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = canvas.clientWidth;
-      height = canvas.clientHeight;
+      const bounds = canvas.getBoundingClientRect();
+      const nextWidth = Math.round(bounds.width || canvas.clientWidth);
+      const nextHeight = Math.round(bounds.height || canvas.clientHeight);
+
+      if (!nextWidth || !nextHeight) return;
+
+      width = nextWidth;
+      height = nextHeight;
       mobile = width < 640;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
+
+      const pixelWidth = Math.round(width * dpr);
+      const pixelHeight = Math.round(height * dpr);
+      if (canvas.width === pixelWidth && canvas.height === pixelHeight) return;
+
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     function draw(now: number) {
       const time = reduce ? 0 : (now - start) / 1000;
       const bounds = canvas.getBoundingClientRect();
-      const active = !reduce && mouseX > -1000;
+      const active = finePointer && !reduce && mouseX > -1000;
 
       if (active) {
         if (presence < 0.02) {
@@ -130,15 +142,29 @@ const { class: className = "" } = Astro.props;
       requestAnimationFrame(draw);
     }
 
-    container.addEventListener("pointermove", (event) => {
-      mouseX = event.clientX;
-      mouseY = event.clientY;
-    });
-    container.addEventListener("pointerleave", () => {
-      mouseX = mouseY = -9999;
-    });
+    if (finePointer) {
+      container.addEventListener("pointermove", (event) => {
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+      });
+      container.addEventListener("pointerleave", () => {
+        mouseX = mouseY = -9999;
+      });
+    }
     window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", resize);
+    window.addEventListener("pageshow", resize);
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+
     resize();
-    requestAnimationFrame(draw);
+    requestAnimationFrame(() => {
+      resize();
+      requestAnimationFrame(() => {
+        resize();
+        draw(performance.now());
+      });
+    });
   });
 </script>

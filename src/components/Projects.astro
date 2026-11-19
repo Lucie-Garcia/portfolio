@@ -3,10 +3,18 @@ import { getProjects } from "../lib/queries";
 
 interface Props {
   showHeading?: boolean;
+  preview?: boolean;
+  showFilters?: boolean;
+  limit?: number;
 }
 
-const { showHeading = true } = Astro.props;
-const projects = getProjects();
+const {
+  showHeading = true,
+  preview = false,
+  showFilters = !preview,
+  limit,
+} = Astro.props;
+const projects = limit ? getProjects().slice(0, limit) : getProjects();
 
 const availableTags = Array.from(
   new Map(
@@ -18,13 +26,19 @@ const availableTags = Array.from(
 <section id="projects" class="mx-auto max-w-6xl px-6 py-16">
   {
     showHeading && (
-      <h1 class="mb-10 text-center text-4xl sm:text-5xl md:text-6xl">
-        Mes projets
-      </h1>
+      preview ? (
+        <h2 class="mb-6 text-2xl font-semibold sm:text-3xl">
+          Mes projets
+        </h2>
+      ) : (
+        <h1 class="mb-10 text-center text-4xl sm:text-5xl md:text-6xl">
+          Mes projets
+        </h1>
+      )
     )
   }
 
-  {availableTags.length > 0 && (
+  {showFilters && availableTags.length > 0 && (
     <div class="project-filters mb-8 flex flex-wrap justify-center gap-2" aria-label="Filtrer les projets par tag">
       <button
         type="button"
@@ -66,16 +80,18 @@ const availableTags = Array.from(
             )}
             <div class="flex flex-1 flex-col p-5">
               <h2 class="text-xl font-semibold">{project.title}</h2>
-              {project.tags.length > 0 && (
+              {!preview && project.tags.length > 0 && (
                 <div class="mt-4 flex flex-wrap gap-2">
                   {project.tags.map((tag) => (
                     <span class="badge badge-primary badge-sm">{tag.name}</span>
                   ))}
                 </div>
               )}
-              <p class="mt-2 line-clamp-3 text-sm leading-6 opacity-75">
-                {project.summary}
-              </p>
+              {!preview && (
+                <p class="mt-2 line-clamp-3 text-sm leading-6 opacity-75">
+                  {project.summary}
+                </p>
+              )}
 
               <span class="mt-5 text-sm font-semibold text-primary">
                 Découvrir le projet <span aria-hidden="true">→</span>
@@ -90,6 +106,14 @@ const availableTags = Array.from(
       </p>
     )
   }
+
+  {preview && projects.length > 0 && (
+    <div class="mt-8 flex justify-center">
+      <a href="/projets" class="btn btn-outline btn-primary">
+        Voir tous les projets
+      </a>
+    </div>
+  )}
 </section>
 
 <script>
